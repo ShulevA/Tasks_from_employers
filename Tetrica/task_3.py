@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
-import itertools
 
-pd.set_option('max_rows', 100)
+pd.set_option('max_rows', 800)
 pd.set_option('max_columns', 10)
 pd.set_option('expand_frame_repr', False)
 
@@ -97,36 +96,21 @@ quality = read_other('./tech_quality/quality.txt', 365)
 
 lessons = phys_gpa(lessons, quality)
 
-participants['role'] = np.where(participants['user_id'] == users['id'], users['role'], '-')  # Add column 'role'
+participants = participants.merge(users, left_on='user_id', right_on='id', how='inner')  # Add 'role'
 # from users to participants
+participants = participants.drop('id', axis='columns')  # Delete 'id' column
 participants = participants.loc[participants['event_id'].isin(lessons['event_id'])]  # Filter of participants phys
 participants = participants.loc[participants['role'] == 'tutor']  # Filter of participants
 participants = participants.drop_duplicates()  # Drop duplicates
 
-print(lessons)
+lessons = lessons.merge(participants, left_on='event_id', right_on='event_id', how='inner')  # Add 'user_id'
+lessons = lessons.drop('role', axis='columns')  # Drop 'role' column
+
+lessons['average_rating'] = pd.to_numeric(lessons['average_rating'])
+lessons['scheduled_time'] = pd.to_datetime(lessons['scheduled_time'])
 
 
+df = lessons.groupby([pd.Grouper(key='scheduled_time', freq='D'), 'user_id']).mean()
+df = df.reset_index()
 
-
-
-
-
-# test = participants.to_dict(orient='list')
-# test.pop('role')
-# # print(test)
-# test_2 = {}
-#
-# for i, j in zip(test['event_id'], test['user_id']):
-#     test_2.setdefault(i, j)
-#
-#
-# for i, j in zip(lessons['event_id'], participants['event_id']):
-#     if i in test_2:
-#         lessons['user_id'] = test_2[i]
-#         print(i, test_2[i])
-# print(lessons)
-
-
-
-
-
+print(df.groupby(['scheduled_time'])['user_id', 'average_rating'].min())
