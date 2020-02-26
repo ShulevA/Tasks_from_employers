@@ -1,10 +1,6 @@
 import pandas as pd
 import numpy as np
 
-pd.set_option('max_rows', 800)
-pd.set_option('max_columns', 10)
-pd.set_option('expand_frame_repr', False)
-
 
 def read_lessons(file: str, file_dict=None):
     if file_dict is None:
@@ -89,28 +85,59 @@ def phys_gpa(lessons_df: pd.DataFrame, quality_df: pd.DataFrame, average_rating=
     return phys_lessons
 
 
-lessons = read_lessons('./tech_quality/lessons.txt')
-participants = read_other('./tech_quality/participants.txt', 743)
-users = read_other('./tech_quality/users.txt', 743)
-quality = read_other('./tech_quality/quality.txt', 365)
+def lessons_add_user_id(lessons_df: pd.DataFrame, participants_df: pd.DataFrame, users_df: pd.DataFrame):
+    """
+    Add to lesson_df (from file lessons.txt) column of user_id, who phys tutor.
+    """
+    participants_df = participants_df.merge(users_df, left_on='user_id', right_on='id', how='inner')  # Add 'role'
+    # from users to participants
+    participants_df = participants_df.drop('id', axis='columns')  # Delete 'id' column
+    participants_df = participants_df.loc[participants_df['event_id'].isin(lessons_df['event_id'])]  # Filter
+    # of participants phys
+    participants_df = participants_df.loc[participants_df['role'] == 'tutor']  # Tutor participants filter
+    participants_df = participants_df.drop_duplicates()  # Drop duplicates
 
-lessons = phys_gpa(lessons, quality)
+    lessons_df = lessons_df.merge(participants_df, left_on='event_id', right_on='event_id', how='inner')  # Add
+    # 'user_id'
+    lessons_df = lessons_df.drop('role', axis='columns')  # Drop 'role' column
 
-participants = participants.merge(users, left_on='user_id', right_on='id', how='inner')  # Add 'role'
-# from users to participants
-participants = participants.drop('id', axis='columns')  # Delete 'id' column
-participants = participants.loc[participants['event_id'].isin(lessons['event_id'])]  # Filter of participants phys
-participants = participants.loc[participants['role'] == 'tutor']  # Filter of participants
-participants = participants.drop_duplicates()  # Drop duplicates
-
-lessons = lessons.merge(participants, left_on='event_id', right_on='event_id', how='inner')  # Add 'user_id'
-lessons = lessons.drop('role', axis='columns')  # Drop 'role' column
-
-lessons['average_rating'] = pd.to_numeric(lessons['average_rating'])
-lessons['scheduled_time'] = pd.to_datetime(lessons['scheduled_time'])
+    return lessons_df
 
 
-df = lessons.groupby([pd.Grouper(key='scheduled_time', freq='D'), 'user_id']).mean()
-df = df.reset_index()
+def tutor_average_rating(lessons_df: pd.DataFrame):
+    """
+    Calculating the average rating of each tutor by day
+    """
+    lessons_df['average_rating'] = pd.to_numeric(lessons_df['average_rating'])  # Change type average_rating to float
+    lessons_df['scheduled_time'] = pd.to_datetime(lessons_df['scheduled_time'])  # Change type scheduled_time
+    # to datetime
+    lessons_df = lessons_df.groupby([pd.Grouper(key='scheduled_time', freq='D'), 'user_id']).mean()  # Calculating
+    # the average rating of each tutor by day
 
-print(df.groupby(['scheduled_time'])['user_id', 'average_rating'].min())
+    return lessons_df
+
+
+def tutor_rate_lowest(lessons_file: str, participants_file: str, participants_rows: int, users_file: str,
+                      users_rows: int, quality_file: str, quality_rows: int):
+    """
+    ID of teachers with a minimum rating by day
+    """
+    lessons = read_lessons(lessons_file)
+    participants = read_other(participants_file, participants_rows)
+    users = read_other(users_file, users_rows)
+    quality = read_other(quality_file, quality_rows)
+
+    lessons = phys_gpa(lessons, quality)
+    lessons = lessons_add_user_id(lessons, participants, users)
+    lessons = tutor_average_rating(lessons)
+    lessons = lessons.reset_index()
+
+    return lessons.groupby(['scheduled_time'])['user_id', 'average_rating'].min()
+
+
+lessons = './tech_quality/lessons.txt'
+participants = './tech_quality/participants.txt'
+users = './tech_quality/users.txt'
+quality = './tech_quality/quality.txt'
+
+print(tutor_rate_lowest(lessons, participants, 743, users, 743, quality, 365))
