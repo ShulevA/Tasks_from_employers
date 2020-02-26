@@ -135,9 +135,10 @@ def tutor_rate_lowest(lessons_file: str, participants_file: str, participants_ro
     return lessons.groupby(['scheduled_time'])['user_id', 'average_rating'].min()
 
 
-lessons = './tech_quality/lessons.txt'
-participants = './tech_quality/participants.txt'
-users = './tech_quality/users.txt'
-quality = './tech_quality/quality.txt'
+if __name__ == '__main__':
+    lessons = './tech_quality/lessons.txt'
+    participants = './tech_quality/participants.txt'
+    users = './tech_quality/users.txt'
+    quality = './tech_quality/quality.txt'
 
-print(tutor_rate_lowest(lessons, participants, 743, users, 743, quality, 365))
+    print(tutor_rate_lowest(lessons, participants, 743, users, 743, quality, 365))
