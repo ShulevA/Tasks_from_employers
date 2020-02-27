@@ -26,10 +26,7 @@ def most_repeat_ip(file_path: str, ip_number: int, ip=None, ip_count=None):
     ip_count = sorted(ip_count.items(), key=lambda x: x[1], reverse=True)
 
     for i in range(ip_number):
-        if ip_count[i][1] == ip_count[i + 1][1]:
-            print(ip_count[i][0], ',', ip_count[i + 1][0])
-        else:
-            print(ip_count[i][0])
+        print(ip_count[i][0])
 
 
 if __name__ == '__main__':
